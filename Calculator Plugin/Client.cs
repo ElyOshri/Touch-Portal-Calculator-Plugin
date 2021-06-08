@@ -13,11 +13,12 @@ namespace Calculator_Plugin
         public string PluginId => "TPCalculator";
 
         private readonly ITouchPortalClient _client;
-        
-        private string currentEquation = "";
-        private string lastResult;
+
+        private DataTable compiler = new DataTable();
+        private string currentEquation = "", lastResult = "", beforePercentage = "", afterPercentage = "", percentage = "",actualPower = "",actualNumber = "";
+        private int currentPosition = 0, startOfValue = 0, hasPercentage = 0, hasPower = 0, powerEnd = 0,bracketAmount = 0;
         private bool calculated = false;
-        private int hasPercentage = 0;
+        
         public Client()
         {
             _client = TouchPortalFactory.CreateClient(this);
@@ -93,6 +94,10 @@ namespace Calculator_Plugin
                     }
                     if (message.GetValue("TPPlugin.Calculator.Actions.AddOperator.Data.List") == "%")
                         this.hasPercentage++;
+
+                    if (message.GetValue("TPPlugin.Calculator.Actions.AddOperator.Data.List") == "^")
+                        this.hasPower++;
+
                     this.currentEquation += message.GetValue("TPPlugin.Calculator.Actions.AddOperator.Data.List") ?? "";
                     _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.currentEquation);
                     break;
@@ -103,6 +108,7 @@ namespace Calculator_Plugin
                         this.currentEquation = "";
                         this.calculated = false;
                         this.hasPercentage = 0;
+                        this.hasPower = 0;
                     }
                     if (message.GetValue("TPPlugin.Calculator.Actions.AddCustomValue.Data.List")[0] == '-' && (this.currentEquation[this.currentEquation.Length-1] == '+' || this.currentEquation[this.currentEquation.Length - 1] == '-' || this.currentEquation[this.currentEquation.Length - 1] == '/' || this.currentEquation[this.currentEquation.Length - 1] == '*'))
                     {
@@ -117,7 +123,15 @@ namespace Calculator_Plugin
                     break;
                 
                 case "TPPlugin.Calculator.Actions.Calculate":
-                    if (this.hasPercentage > 0)
+                    if(this.hasPercentage > 0 && this.hasPower > 0)
+                    {
+                        this.lastResult = ReturnResult(PercentageFix(PowerFix(this.currentEquation)));
+                        this.calculated = true;
+                        _client.StateUpdate("TPPlugin.Calculator.States.Result", this.lastResult);
+                        _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.lastResult);
+                        break;
+                    }
+                    else if (this.hasPercentage > 0)
                     {
                         this.lastResult = ReturnResult(PercentageFix(this.currentEquation));
                         this.calculated = true;
@@ -125,8 +139,18 @@ namespace Calculator_Plugin
                         _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.lastResult);
                         break;
                     }
+                    else if(this.hasPower > 0)
+                    {
+                        this.lastResult = ReturnResult(PowerFix(this.currentEquation));
+                        this.calculated = true;
+                        _client.StateUpdate("TPPlugin.Calculator.States.Result", this.lastResult);
+                        _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.lastResult);
+                        break;
+                    }
+
                     this.lastResult = ReturnResult(this.currentEquation);
                     this.calculated = true;
+                    
                     _client.StateUpdate("TPPlugin.Calculator.States.Result", this.lastResult);
                     _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.lastResult);
                     break;
@@ -137,6 +161,7 @@ namespace Calculator_Plugin
                         this.currentEquation = "";
                         this.calculated = false;
                         this.hasPercentage = 0;
+                        this.hasPower = 0;
                     }
                     this.currentEquation += this.lastResult;
                     _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.currentEquation);
@@ -147,6 +172,8 @@ namespace Calculator_Plugin
                     this.lastResult = "";
                     this.currentEquation = "";
                     this.hasPercentage = 0;
+                    this.hasPower = 0;
+
                     _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", "");
                     _client.StateUpdate("TPPlugin.Calculator.States.Result", "");
                     break;
@@ -155,6 +182,8 @@ namespace Calculator_Plugin
                     this.calculated = false;
                     this.currentEquation = "";
                     this.hasPercentage = 0;
+                    this.hasPower = 0;
+
                     _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", "");
                     break;
                 
@@ -163,14 +192,23 @@ namespace Calculator_Plugin
                     {
                         if (this.currentEquation[this.currentEquation.Length - 1] == '%')
                             this.hasPercentage--;
+
+                        if (this.currentEquation[this.currentEquation.Length - 1] == '^')
+                            this.hasPower--;
+
                         this.calculated = false;
                         this.currentEquation = this.currentEquation.Remove(this.currentEquation.Length - 1, 1);
+                        
                         _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.currentEquation);
+
                         break;
                     }
                     catch
                     {
+                        this.calculated = false;
                         this.currentEquation = "";
+                        this.hasPercentage = 0;
+                        this.hasPower = 0;
                         _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.currentEquation);
                         break;
                     }
@@ -191,9 +229,8 @@ namespace Calculator_Plugin
         {
             try
             {
-                string value = new DataTable().Compute(equation, null).ToString();
-                Console.WriteLine(value);
-                return value;
+                Console.WriteLine(compiler.Compute(equation, null).ToString());
+                return compiler.Compute(equation, null).ToString();
             }
             catch
             {
@@ -204,8 +241,6 @@ namespace Calculator_Plugin
         }
         private string PercentageFix(string equation)
         {
-            string beforePercentage = "", afterPercentage = "", percentage = "";
-            int currentPosition = 0, startOfValue = 0;
             for (int i = 0; i < this.hasPercentage; i++)
             {
                 for (int j = 0; j < equation.Length; j++)
@@ -243,20 +278,119 @@ namespace Calculator_Plugin
                 else if (percentage.Length > 2)
                     percentage = percentage.Substring(0, percentage.Length - 2) + "." + percentage.Substring(percentage.Length - 2, 2);
                 
-                var temp1 = new DataTable();
-                double temp3 = 0, temp4 = 0;
                 
                 try
                 {
-                    temp3 = Convert.ToDouble(temp1.Compute(beforePercentage.Remove(beforePercentage.Length - 1, 1), null));
-                    temp4 = Convert.ToDouble(temp1.Compute(percentage, null));
+                    percentage = (Convert.ToDouble(compiler.Compute(beforePercentage.Remove(beforePercentage.Length - 1, 1), null)) * Convert.ToDouble(compiler.Compute(percentage, null))).ToString();
                 }
                 catch
                 {
                     return "Syntax Error";
                 }
                 
-                percentage = (temp3 * temp4).ToString();
+                equation = beforePercentage + percentage + afterPercentage;
+            }
+            return equation;
+        }
+        private string PowerFix(string equation)
+        {
+            for (int i = 0; i < hasPower; i++)
+            {
+                for (int j = 0; j < equation.Length; j++)
+                {
+                    if(equation[j] == '^')
+                    {
+                        startOfValue = 0;
+                        currentPosition = j;
+                        bracketAmount = 0;
+                        if (equation[j - 1] == ')')
+                        {
+                            bracketAmount = -1;
+                            for (int x = j - 2; x >= 0; x--)
+                            {
+                                if (equation[x] == ')')
+                                    bracketAmount--;
+                                else if (equation[x] == '(' && bracketAmount == -1)
+                                {
+                                    startOfValue = x;
+                                    break;
+                                }
+                                else if (equation[x] == '(')
+                                    bracketAmount++;
+                            }
+                        }
+                        else
+                        {
+                            for (int x = j; x >= 0; x--)
+                            {
+                                if (equation[x] == '+' || equation[x] == '-' || equation[x] == '/' || equation[x] == '*')
+                                {
+                                    startOfValue = x;
+                                    break;
+                                }
+                            }
+                        }
+                        powerEnd = equation.Length;
+                        for (int x = j; x < equation.Length; x++)
+                        {
+                            if (equation[x] == '+' || equation[x] == '-' || equation[x] == '/' || equation[x] == '*'|| equation[x] == ')')
+                            {
+                                powerEnd = x;
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+                try
+                {
+                    if (startOfValue != 0)
+                    {
+                        if (bracketAmount == 0)
+                        {
+                            beforePercentage = equation.Substring(0, startOfValue + 1);
+                            actualNumber = equation.Substring(startOfValue + 1, currentPosition - startOfValue - 1);
+                        }
+                        else
+                        {
+                            beforePercentage = equation.Substring(0, startOfValue);
+                            actualNumber = equation.Substring(startOfValue, currentPosition - startOfValue);
+                        }
+
+                    }
+                    else
+                    {
+                        beforePercentage = "";
+                        actualNumber = equation.Substring(startOfValue, currentPosition - startOfValue);
+                    }
+                        
+                    if (powerEnd != equation.Length)
+                    {
+                        actualPower = equation.Substring(currentPosition + 1, powerEnd - currentPosition - 1);
+                        afterPercentage = equation.Substring(powerEnd, equation.Length - powerEnd );
+                    }
+                    else
+                    {
+                        actualPower = equation.Substring(currentPosition + 1, equation.Length - currentPosition - 1);
+                        afterPercentage = "";
+                    }
+                }
+                catch
+                {
+                    return "Syntax Error";
+                }
+                Console.WriteLine(beforePercentage);
+                Console.WriteLine(actualNumber);
+                Console.WriteLine(actualPower);
+                Console.WriteLine(afterPercentage);
+                //try
+                {
+                    percentage = Math.Pow(Convert.ToDouble(compiler.Compute(actualNumber, null)), Convert.ToDouble(actualPower)).ToString();
+                }
+                //catch
+                {
+                    //return "Syntax Error";
+                }
                 equation = beforePercentage + percentage + afterPercentage;
             }
             return equation;
