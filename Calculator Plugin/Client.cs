@@ -15,7 +15,7 @@ namespace Calculator_Plugin
         private readonly ITouchPortalClient _client;
 
         private DataTable compiler = new DataTable();
-        private string currentEquation = "", lastResult = "", beforePercentage = "", afterPercentage = "", percentage = "", actualPower = "", actualNumber = "";
+        private string currentEquation = "", lastResult = "", beforePercentage = "", afterPercentage = "", percentage = "", actualPower = "", actualNumber = "", memory = "";
         private int currentPosition = 0, startOfValue = 0, hasPercentage = 0, hasPower = 0, powerEnd = 0, bracketAmount = 0;
         private bool calculated = false;
         string[,] historyMatrix = { { "", "", "", "", "" }, { "", "", "", "", "" } };
@@ -86,7 +86,7 @@ namespace Calculator_Plugin
                     this.currentEquation += message.GetValue("TPPlugin.Calculator.Actions.AddValue.Data.List") ?? "";
                     _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.currentEquation);
                     break;
-                
+
 
                 case "TPPlugin.Calculator.Actions.AddOperator":
                     if (calculated)
@@ -105,7 +105,7 @@ namespace Calculator_Plugin
                     this.currentEquation += message.GetValue("TPPlugin.Calculator.Actions.AddOperator.Data.List") ?? "";
                     _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.currentEquation);
                     break;
-                
+
 
                 case "TPPlugin.Calculator.Actions.AddCustomValue":
                     if (calculated)
@@ -115,7 +115,7 @@ namespace Calculator_Plugin
                         this.hasPercentage = 0;
                         this.hasPower = 0;
                     }
-                    if (message.GetValue("TPPlugin.Calculator.Actions.AddCustomValue.Data.List")[0] == '-' && (this.currentEquation[this.currentEquation.Length-1] == '+' || this.currentEquation[this.currentEquation.Length - 1] == '-' || this.currentEquation[this.currentEquation.Length - 1] == '/' || this.currentEquation[this.currentEquation.Length - 1] == '*'))
+                    if (message.GetValue("TPPlugin.Calculator.Actions.AddCustomValue.Data.List")[0] == '-' && (this.currentEquation[this.currentEquation.Length - 1] == '+' || this.currentEquation[this.currentEquation.Length - 1] == '-' || this.currentEquation[this.currentEquation.Length - 1] == '/' || this.currentEquation[this.currentEquation.Length - 1] == '*'))
                     {
                         this.currentEquation += "(";
                         this.currentEquation += message.GetValue("TPPlugin.Calculator.Actions.AddCustomValue.Data.List") ?? "";
@@ -138,7 +138,7 @@ namespace Calculator_Plugin
                         this.hasPercentage = 0;
                         this.hasPower = 0;
                     }
-                    if(message.GetValue("TPPlugin.Calculator.Actions.AddFromHistory.Type.Data.List") == "Result")
+                    if (message.GetValue("TPPlugin.Calculator.Actions.AddFromHistory.Type.Data.List") == "Result")
                     {
                         this.currentEquation += historyMatrix[0, Convert.ToInt32(message.GetValue("TPPlugin.Calculator.Actions.AddFromHistory.Number.Data.List") ?? "0") - 1];
                     }
@@ -160,23 +160,26 @@ namespace Calculator_Plugin
 
 
                 case "TPPlugin.Calculator.Actions.Calculate":
-                    if(this.hasPercentage > 0 && this.hasPower > 0)
+                    if (this.hasPercentage > 0 && this.hasPower > 0)
                     {
                         this.lastResult = ReturnResult(PercentageFix(PowerFix(this.currentEquation)));
                         this.calculated = true;
                         _client.StateUpdate("TPPlugin.Calculator.States.Result", this.lastResult);
                         _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.lastResult);
-                        for (int i = historyMatrix.GetLength(1) - 1; i > 0; i--)
+                        if (lastResult != "Syntax Error")
                         {
-                            historyMatrix[0, i] = historyMatrix[0, i - 1];
-                            historyMatrix[1, i] = historyMatrix[1, i - 1];
-                        }
-                        historyMatrix[0, 0] = lastResult;
-                        historyMatrix[1, 0] = currentEquation;
-                        for (int i = 0; i < historyMatrix.GetLength(1); i++)
-                        {
-                            _client.StateUpdate("TPPlugin.Calculator.States.History.Result." + (i + 1).ToString(), historyMatrix[0, i]);
-                            _client.StateUpdate("TPPlugin.Calculator.States.History.Equation." + (i + 1).ToString(), historyMatrix[1, i]);
+                            for (int i = historyMatrix.GetLength(1) - 1; i > 0; i--)
+                            {
+                                historyMatrix[0, i] = historyMatrix[0, i - 1];
+                                historyMatrix[1, i] = historyMatrix[1, i - 1];
+                            }
+                            historyMatrix[0, 0] = lastResult;
+                            historyMatrix[1, 0] = currentEquation;
+                            for (int i = 0; i < historyMatrix.GetLength(1); i++)
+                            {
+                                _client.StateUpdate("TPPlugin.Calculator.States.History.Result." + (i + 1).ToString(), historyMatrix[0, i]);
+                                _client.StateUpdate("TPPlugin.Calculator.States.History.Equation." + (i + 1).ToString(), historyMatrix[1, i]);
+                            }
                         }
                         break;
                     }
@@ -186,58 +189,66 @@ namespace Calculator_Plugin
                         this.calculated = true;
                         _client.StateUpdate("TPPlugin.Calculator.States.Result", this.lastResult);
                         _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.lastResult);
-                        for (int i = historyMatrix.GetLength(1) - 1; i > 0; i--)
+                        if (lastResult != "Syntax Error")
                         {
-                            historyMatrix[0, i] = historyMatrix[0, i - 1];
-                            historyMatrix[1, i] = historyMatrix[1, i - 1];
-                        }
-                        historyMatrix[0, 0] = lastResult;
-                        historyMatrix[1, 0] = currentEquation;
-                        for (int i = 0; i < historyMatrix.GetLength(1); i++)
-                        {
-                            _client.StateUpdate("TPPlugin.Calculator.States.History.Result." + (i + 1).ToString(), historyMatrix[0, i]);
-                            _client.StateUpdate("TPPlugin.Calculator.States.History.Equation." + (i + 1).ToString(), historyMatrix[1, i]);
+                            for (int i = historyMatrix.GetLength(1) - 1; i > 0; i--)
+                            {
+                                historyMatrix[0, i] = historyMatrix[0, i - 1];
+                                historyMatrix[1, i] = historyMatrix[1, i - 1];
+                            }
+                            historyMatrix[0, 0] = lastResult;
+                            historyMatrix[1, 0] = currentEquation;
+                            for (int i = 0; i < historyMatrix.GetLength(1); i++)
+                            {
+                                _client.StateUpdate("TPPlugin.Calculator.States.History.Result." + (i + 1).ToString(), historyMatrix[0, i]);
+                                _client.StateUpdate("TPPlugin.Calculator.States.History.Equation." + (i + 1).ToString(), historyMatrix[1, i]);
+                            }
                         }
                         break;
                     }
-                    else if(this.hasPower > 0)
+                    else if (this.hasPower > 0)
                     {
                         this.lastResult = ReturnResult(PowerFix(this.currentEquation));
                         this.calculated = true;
                         _client.StateUpdate("TPPlugin.Calculator.States.Result", this.lastResult);
                         _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.lastResult);
-                        for (int i = historyMatrix.GetLength(1) - 1; i > 0; i--)
+                        if (lastResult != "Syntax Error")
                         {
-                            historyMatrix[0, i] = historyMatrix[0, i - 1];
-                            historyMatrix[1, i] = historyMatrix[1, i - 1];
-                        }
-                        historyMatrix[0, 0] = lastResult;
-                        historyMatrix[1, 0] = currentEquation;
-                        for (int i = 0; i < historyMatrix.GetLength(1); i++)
-                        {
-                            _client.StateUpdate("TPPlugin.Calculator.States.History.Result." + (i + 1).ToString(), historyMatrix[0, i]);
-                            _client.StateUpdate("TPPlugin.Calculator.States.History.Equation." + (i + 1).ToString(), historyMatrix[1, i]);
+                            for (int i = historyMatrix.GetLength(1) - 1; i > 0; i--)
+                            {
+                                historyMatrix[0, i] = historyMatrix[0, i - 1];
+                                historyMatrix[1, i] = historyMatrix[1, i - 1];
+                            }
+                            historyMatrix[0, 0] = lastResult;
+                            historyMatrix[1, 0] = currentEquation;
+                            for (int i = 0; i < historyMatrix.GetLength(1); i++)
+                            {
+                                _client.StateUpdate("TPPlugin.Calculator.States.History.Result." + (i + 1).ToString(), historyMatrix[0, i]);
+                                _client.StateUpdate("TPPlugin.Calculator.States.History.Equation." + (i + 1).ToString(), historyMatrix[1, i]);
+                            }
                         }
                         break;
                     }
 
                     this.lastResult = ReturnResult(this.currentEquation);
                     this.calculated = true;
-                    
+
                     _client.StateUpdate("TPPlugin.Calculator.States.Result", this.lastResult);
                     _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.lastResult);
-
-                    for (int i = historyMatrix.GetLength(1)-1; i > 0; i--)
-                    {
-                        historyMatrix[0,i] = historyMatrix[0,i - 1];
-                        historyMatrix[1,i] = historyMatrix[1,i - 1];
-                    }
-                    historyMatrix[0,0] = lastResult;
-                    historyMatrix[1,0] = currentEquation;
-                    for (int i = 0; i < historyMatrix.GetLength(1); i++)
-                    {
-                        _client.StateUpdate("TPPlugin.Calculator.States.History.Result." + (i + 1).ToString(), historyMatrix[0, i]);
-                        _client.StateUpdate("TPPlugin.Calculator.States.History.Equation." + (i + 1).ToString(), historyMatrix[1, i]);
+                    if (lastResult != "Syntax Error") 
+                    { 
+                        for (int i = historyMatrix.GetLength(1) - 1; i > 0; i--)
+                        {
+                            historyMatrix[0, i] = historyMatrix[0, i - 1];
+                            historyMatrix[1, i] = historyMatrix[1, i - 1];
+                        }
+                        historyMatrix[0, 0] = lastResult;
+                        historyMatrix[1, 0] = currentEquation;
+                        for (int i = 0; i < historyMatrix.GetLength(1); i++)
+                        {
+                            _client.StateUpdate("TPPlugin.Calculator.States.History.Result." + (i + 1).ToString(), historyMatrix[0, i]);
+                            _client.StateUpdate("TPPlugin.Calculator.States.History.Equation." + (i + 1).ToString(), historyMatrix[1, i]);
+                        } 
                     }
                     break;
 
@@ -261,7 +272,7 @@ namespace Calculator_Plugin
                     this.currentEquation = "";
                     this.hasPercentage = 0;
                     this.hasPower = 0;
-                    for (int i = 0; i < historyMatrix.GetLength(0); i++)
+                    for (int i = 0; i < historyMatrix.GetLength(1); i++)
                     {
                         historyMatrix[1, i] = "";
                         historyMatrix[0, i] = "";
@@ -308,6 +319,27 @@ namespace Calculator_Plugin
                         _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.currentEquation);
                         break;
                     }
+
+
+                case "TPPlugin.Calculator.Actions.MemoryActions":
+                    if (message.GetValue("TPPlugin.Calculator.Actions.MemoryAction.Data.List") == "Clear")
+                        this.memory = "";
+                    else if (message.GetValue("TPPlugin.Calculator.Actions.MemoryAction.Data.List") == "Plus")
+                    {
+                        if (lastResult != "Syntax Error")
+                            this.memory = ReturnResult(memory + "+" + lastResult);
+                    }
+                    else if (message.GetValue("TPPlugin.Calculator.Actions.MemoryAction.Data.List") == "Minus")
+                    {
+                        if (lastResult != "Syntax Error")
+                            this.memory = ReturnResult(memory + "-" + lastResult);
+                    }
+                    else if (message.GetValue("TPPlugin.Calculator.Actions.MemoryAction.Data.List") == "Recall")
+                    {
+                        this.currentEquation = memory;
+                        _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.currentEquation);
+                    }
+                    break;
 
                 default:
                     var data = string.Join(", ", message.Data.Select(dataItem => $"\"{dataItem.Id}\":\"{dataItem.Value}\""));
