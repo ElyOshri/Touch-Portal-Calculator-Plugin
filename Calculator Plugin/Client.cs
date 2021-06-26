@@ -336,7 +336,7 @@ namespace Calculator_Plugin
                     }
                     else if (message.GetValue("TPPlugin.Calculator.Actions.MemoryAction.Data.List") == "Recall")
                     {
-                        this.currentEquation = memory;
+                        this.currentEquation += memory;
                         _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.currentEquation);
                     }
                     break;
