@@ -323,18 +323,28 @@ namespace Calculator_Plugin
 
                 case "TPPlugin.Calculator.Actions.MemoryActions":
                     if (message.GetValue("TPPlugin.Calculator.Actions.MemoryAction.Data.List") == "Clear")
+                    {
                         this.memory = "";
+                        _client.StateUpdate("TPPlugin.Calculator.States.MemoryValue", this.memory);
+                    }
+
                     else if (message.GetValue("TPPlugin.Calculator.Actions.MemoryAction.Data.List") == "Plus")
                     {
                         if (lastResult != "Syntax Error")
+                        {
                             this.memory = ReturnResult(memory + "+" + lastResult);
+                            _client.StateUpdate("TPPlugin.Calculator.States.MemoryValue", this.memory);
+                        }
                     }
                     else if (message.GetValue("TPPlugin.Calculator.Actions.MemoryAction.Data.List") == "Minus")
                     {
                         if (lastResult != "Syntax Error")
+                        {
                             this.memory = ReturnResult(memory + "-" + lastResult);
-                    }
-                    else if (message.GetValue("TPPlugin.Calculator.Actions.MemoryAction.Data.List") == "Recall")
+                            _client.StateUpdate("TPPlugin.Calculator.States.MemoryValue", this.memory);
+                        }
+                        }
+                        else if (message.GetValue("TPPlugin.Calculator.Actions.MemoryAction.Data.List") == "Recall")
                     {
                         this.currentEquation += memory;
                         _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.currentEquation);
