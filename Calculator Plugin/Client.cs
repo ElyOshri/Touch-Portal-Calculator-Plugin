@@ -15,10 +15,11 @@ namespace Calculator_Plugin
         private readonly ITouchPortalClient _client;
 
         private DataTable compiler = new DataTable();
-        private string currentEquation = "", lastResult = "", beforePercentage = "", afterPercentage = "", percentage = "", actualPower = "", actualNumber = "", memory = "";
-        private int currentPosition = 0, startOfValue = 0, hasPercentage = 0, hasPower = 0, powerEnd = 0, bracketAmount = 0;
+        private string currentEquation = "", lastResult = "", beforePercentage = "", afterPercentage = "", percentage = "", actualPower = "", actualNumber = "";
+        private int currentPosition = 0, startOfValue = 0, hasPercentage = 0, hasPower = 0, powerEnd = 0, bracketAmount = 0, currentlySelectedMemory = 1;
         private bool calculated = false;
         string[,] historyMatrix = { { "", "", "", "", "" }, { "", "", "", "", "" } };
+        string[] memoryArr = { "", "", "", "", "" };
         
         public Client()
         {
@@ -320,35 +321,49 @@ namespace Calculator_Plugin
                         break;
                     }
 
-
                 case "TPPlugin.Calculator.Actions.MemoryActions":
                     if (message.GetValue("TPPlugin.Calculator.Actions.MemoryAction.Data.List") == "Clear")
                     {
-                        this.memory = "";
-                        _client.StateUpdate("TPPlugin.Calculator.States.MemoryValue", this.memory);
+                        this.memoryArr[currentlySelectedMemory-1] = "";
+                        _client.StateUpdate("TPPlugin.Calculator.States.MemoryValue." + currentlySelectedMemory.ToString(), this.memoryArr[currentlySelectedMemory - 1]);
+                    }
+                    
+                    else if (message.GetValue("TPPlugin.Calculator.Actions.MemoryAction.Data.List") == "Clear All")
+                    {
+                        for (int i = 0; i < 5; i++)
+                        {
+                            this.memoryArr[i] = "";
+                            _client.StateUpdate("TPPlugin.Calculator.States.MemoryValue." + (i+1).ToString(), this.memoryArr[i]);
+                        }
                     }
 
                     else if (message.GetValue("TPPlugin.Calculator.Actions.MemoryAction.Data.List") == "Plus")
                     {
                         if (lastResult != "Syntax Error")
                         {
-                            this.memory = ReturnResult(memory + "+" + lastResult);
-                            _client.StateUpdate("TPPlugin.Calculator.States.MemoryValue", this.memory);
+                            this.memoryArr[currentlySelectedMemory - 1] = ReturnResult(memoryArr[currentlySelectedMemory - 1] + "+" + lastResult);
+                            _client.StateUpdate("TPPlugin.Calculator.States.MemoryValue." + currentlySelectedMemory.ToString(), this.memoryArr[currentlySelectedMemory - 1]);
                         }
                     }
                     else if (message.GetValue("TPPlugin.Calculator.Actions.MemoryAction.Data.List") == "Minus")
                     {
                         if (lastResult != "Syntax Error")
                         {
-                            this.memory = ReturnResult(memory + "-" + lastResult);
-                            _client.StateUpdate("TPPlugin.Calculator.States.MemoryValue", this.memory);
+                            this.memoryArr[currentlySelectedMemory - 1] = ReturnResult(memoryArr[currentlySelectedMemory - 1] + "-" + lastResult);
+                            _client.StateUpdate("TPPlugin.Calculator.States.MemoryValue." + currentlySelectedMemory.ToString(), this.memoryArr[currentlySelectedMemory - 1]);
                         }
-                        }
+                    }
                         else if (message.GetValue("TPPlugin.Calculator.Actions.MemoryAction.Data.List") == "Recall")
                     {
-                        this.currentEquation += memory;
+                        this.currentEquation += memoryArr[currentlySelectedMemory - 1];
                         _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.currentEquation);
                     }
+                    break;
+
+
+                case "TPPlugin.Calculator.Actions.MemorySelect":
+                    currentlySelectedMemory = Convert.ToInt32(message.GetValue("TPPlugin.Calculator.Actions.MemorySelect.Number.Data.List"));
+                    _client.StateUpdate("TPPlugin.Calculator.States.Memory.CurrentlySelectedMemory", this.currentlySelectedMemory.ToString());
                     break;
 
                 default:
