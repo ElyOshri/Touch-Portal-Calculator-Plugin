@@ -489,8 +489,14 @@ namespace Calculator_Plugin
         {
             for (int i = 0; i < this.hasPercentage; i++)
             {
+                bracketAmount = 0;
+                afterBracketAmount = 0;
                 for (int j = 0; j < equation.Length; j++)
                 {
+                    if (equation[j] == '(')
+                        bracketAmount--;
+                    else if (equation[j] == ')')
+                        bracketAmount++;
                     if(equation[j] == '%')
                     {
                         currentPosition = j;
@@ -508,9 +514,39 @@ namespace Calculator_Plugin
                 
                 try
                 {
-                    beforePercentage = equation.Substring(0, startOfValue+1);
-                    percentage = equation.Substring(startOfValue+1, currentPosition - startOfValue - 1);
-                    afterPercentage = equation.Substring(currentPosition+1, equation.Length-1 - currentPosition);
+                    if (bracketAmount == 0)
+                    {
+                        beforePercentage = equation.Substring(0, startOfValue + 1);
+                        percentage = equation.Substring(startOfValue + 1, currentPosition - startOfValue - 1);
+                        afterPercentage = equation.Substring(currentPosition + 1, equation.Length - 1 - currentPosition);
+                    }
+                    else
+                    {
+                        beforePercentage = equation.Substring(0, startOfValue + 1);
+                        percentage = equation.Substring(startOfValue + 1, currentPosition - startOfValue - 1);
+                        afterPercentage = equation.Substring(currentPosition + 1, equation.Length - 1 - currentPosition);
+                        actualNumber = beforePercentage.Remove(beforePercentage.Length - 1, 1);
+                        for (int j = 0; j < Math.Abs(bracketAmount); j++)
+                        {
+                            actualNumber += ")";
+                        }
+                        afterBracketAmount = Math.Abs(bracketAmount);
+                        for (int j = 0; j < actualNumber.Length; j++)
+                        {
+                            if (actualNumber[j] == '(' && bracketAmount == -1)
+                            {
+                                startOfValue = j;
+                                break;
+                            }
+                            else if (actualNumber[j] == '(')
+                                bracketAmount++;
+                        }
+                        actualNumber = actualNumber.Substring(startOfValue, actualNumber.Length-startOfValue);
+                        if (afterBracketAmount > 1)
+                            actualNumber = actualNumber.Remove(actualNumber.Length - afterBracketAmount+1, afterBracketAmount-1);
+                        Console.WriteLine(afterBracketAmount);
+                        Console.WriteLine(actualNumber);
+                    }
                 }
                 catch
                 {
@@ -527,7 +563,11 @@ namespace Calculator_Plugin
                 
                 try
                 {
-                    percentage = (Convert.ToDouble(compiler.Compute(beforePercentage.Remove(beforePercentage.Length - 1, 1), null)) * Convert.ToDouble(compiler.Compute(percentage, null))).ToString();
+                    if (bracketAmount == 0)
+                        percentage = (Convert.ToDouble(compiler.Compute(beforePercentage.Remove(beforePercentage.Length - 1, 1), null)) * Convert.ToDouble(compiler.Compute(percentage, null))).ToString();
+                    else
+                        percentage = (Convert.ToDouble(compiler.Compute(actualNumber, null)) * Convert.ToDouble(compiler.Compute(percentage, null))).ToString();
+
                 }
                 catch
                 {
