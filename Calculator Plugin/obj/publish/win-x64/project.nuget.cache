@@ -1,0 +1,24 @@
+{
+  "version": 2,
+  "dgSpecHash": "GIyZ3YP6SZ/cwsCRQiOv0DXJaUb011vcfWdjdKN+YYNxBbId2Ef0pztVSySDUOt4GsuGETZIz+vlzERVO5dmDA==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\elyos\\source\\repos\\Calculator Plugin\\Calculator Plugin\\Calculator Plugin.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\elyos\\.nuget\\packages\\microsoft.extensions.configuration.abstractions\\5.0.0\\microsoft.extensions.configuration.abstractions.5.0.0.nupkg.sha512",
+    "C:\\Users\\elyos\\.nuget\\packages\\microsoft.extensions.configuration.binder\\5.0.0\\microsoft.extensions.configuration.binder.5.0.0.nupkg.sha512",
+    "C:\\Users\\elyos\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\5.0.0\\microsoft.extensions.dependencyinjection.abstractions.5.0.0.nupkg.sha512",
+    "C:\\Users\\elyos\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\5.0.0\\microsoft.extensions.logging.abstractions.5.0.0.nupkg.sha512",
+    "C:\\Users\\elyos\\.nuget\\packages\\microsoft.extensions.options\\5.0.0\\microsoft.extensions.options.5.0.0.nupkg.sha512",
+    "C:\\Users\\elyos\\.nuget\\packages\\microsoft.extensions.options.configurationextensions\\5.0.0\\microsoft.extensions.options.configurationextensions.5.0.0.nupkg.sha512",
+    "C:\\Users\\elyos\\.nuget\\packages\\microsoft.extensions.primitives\\5.0.0\\microsoft.extensions.primitives.5.0.0.nupkg.sha512",
+    "C:\\Users\\elyos\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\5.0.0\\system.runtime.compilerservices.unsafe.5.0.0.nupkg.sha512",
+    "C:\\Users\\elyos\\.nuget\\packages\\system.text.encodings.web\\5.0.1\\system.text.encodings.web.5.0.1.nupkg.sha512",
+    "C:\\Users\\elyos\\.nuget\\packages\\system.text.json\\5.0.2\\system.text.json.5.0.2.nupkg.sha512",
+    "C:\\Users\\elyos\\.nuget\\packages\\touchportalsdk\\0.23.1-beta-002\\touchportalsdk.0.23.1-beta-002.nupkg.sha512",
+    "C:\\Users\\elyos\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\3.1.13\\microsoft.netcore.app.runtime.win-x64.3.1.13.nupkg.sha512",
+    "C:\\Users\\elyos\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\3.1.13\\microsoft.windowsdesktop.app.runtime.win-x64.3.1.13.nupkg.sha512",
+    "C:\\Users\\elyos\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\3.1.13\\microsoft.aspnetcore.app.runtime.win-x64.3.1.13.nupkg.sha512",
+    "C:\\Users\\elyos\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\3.1.13\\microsoft.netcore.app.host.win-x64.3.1.13.nupkg.sha512"
+  ],
+  "logs": []
+}

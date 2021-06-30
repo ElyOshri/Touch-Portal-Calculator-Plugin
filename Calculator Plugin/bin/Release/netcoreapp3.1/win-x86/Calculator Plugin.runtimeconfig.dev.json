@@ -1,0 +1,8 @@
+{
+  "runtimeOptions": {
+    "additionalProbingPaths": [
+      "C:\\Users\\elyos\\.dotnet\\store\\|arch|\\|tfm|",
+      "C:\\Users\\elyos\\.nuget\\packages"
+    ]
+  }
+}

@@ -3,12 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Data;
-using Microsoft.Extensions.Logging;
 using TouchPortalSDK;
 using TouchPortalSDK.Interfaces;
 using TouchPortalSDK.Messages.Events;
 using TouchPortalSDK.Messages.Models;
-using TouchPortalSDK.Messages.Models.Enums;
 
 namespace Calculator_Plugin
 {
@@ -23,7 +21,7 @@ namespace Calculator_Plugin
 
         private DataTable compiler = new DataTable();
         private string currentEquation = "", lastResult = "", beforePercentage = "", afterPercentage = "", percentage = "", actualPower = "", actualNumber = "";
-        private int currentPosition = 0, startOfValue = 0, hasPercentage = 0, hasPower = 0, powerEnd = 0, bracketAmount = 0, currentlySelectedMemory = 1, historyAmount = 0, memoryAmount = 0;
+        private int currentPosition = 0, startOfValue = 0, hasPercentage = 0, hasPower = 0, powerEnd = 0, bracketAmount = 0, afterBracketAmount = 0, currentlySelectedMemory = 1, historyAmount = 0, memoryAmount = 0;
         private bool calculated = false;
         private string[,] historyMatrix;
         private string[] memoryArr, historyChoice, memoryChoice;
@@ -46,10 +44,6 @@ namespace Calculator_Plugin
             Environment.Exit(0);
         }
 
-        /// <summary>
-        /// Information received when plugin is connected to TouchPortal.
-        /// </summary>
-        /// <param name="message"></param>
         public void OnInfoEvent(InfoEvent message)
         {
             Console.WriteLine($"[Info] VersionCode: '{message.TpVersionCode}', VersionString: '{message.TpVersionString}', SDK: '{message.SdkVersion}', PluginVersion: '{message.PluginVersion}', Status: '{message.Status}'");
@@ -88,10 +82,6 @@ namespace Calculator_Plugin
 
         }
 
-        /// <summary>
-        /// User selected an item in a dropdown menu in the TouchPortal UI.
-        /// </summary>
-        /// <param name="message"></param>
         public void OnListChangedEvent(ListChangeEvent message)
         {
             Console.WriteLine($"[OnListChanged] {message.ListId}/{message.ActionId}/{message.InstanceId} '{message.Value}'");
@@ -145,10 +135,6 @@ namespace Calculator_Plugin
 
         }
 
-        /// <summary>
-        /// User clicked an action.
-        /// </summary>
-        /// <param name="message"></param>
         public void OnActionEvent(ActionEvent message)
         {
             switch (message.ActionId)
@@ -218,20 +204,28 @@ namespace Calculator_Plugin
                     }
                     if (message.GetValue("TPPlugin.Calculator.Actions.AddFromHistory.Type.Data.List") == "Result")
                     {
-                        this.currentEquation += historyMatrix[0, Convert.ToInt32(message.GetValue("TPPlugin.Calculator.Actions.AddFromHistory.Number.Data.List") ?? "0") - 1];
+                        try
+                        {
+                            this.currentEquation += historyMatrix[0, Convert.ToInt32(message.GetValue("TPPlugin.Calculator.Actions.AddFromHistory.Number.Data.List") ?? "0") - 1];
+                        }
+                        catch { }
                     }
                     else if (message.GetValue("TPPlugin.Calculator.Actions.AddFromHistory.Type.Data.List") == "Equation")
                     {
-                        this.currentEquation += historyMatrix[1, Convert.ToInt32(message.GetValue("TPPlugin.Calculator.Actions.AddFromHistory.Number.Data.List") ?? "0") - 1];
-                        hasPercentage = 0;
-                        hasPower = 0;
-                        for (int i = 0; i < currentEquation.Length; i++)
+                        try
                         {
-                            if (currentEquation[i] == '%')
-                                hasPercentage++;
-                            if (currentEquation[i] == '^')
-                                hasPower++;
+                            this.currentEquation += historyMatrix[1, Convert.ToInt32(message.GetValue("TPPlugin.Calculator.Actions.AddFromHistory.Number.Data.List") ?? "0") - 1];
+                            hasPercentage = 0;
+                            hasPower = 0;
+                            for (int i = 0; i < currentEquation.Length; i++)
+                            {
+                                if (currentEquation[i] == '%')
+                                    hasPercentage++;
+                                if (currentEquation[i] == '^')
+                                    hasPower++;
+                            }
                         }
+                        catch { }
                     }
                     _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.currentEquation);
                     break;
@@ -434,6 +428,7 @@ namespace Calculator_Plugin
                             _client.StateUpdate("TPPlugin.Calculator.States.MemoryValue." + currentlySelectedMemory.ToString(), this.memoryArr[currentlySelectedMemory - 1]);
                         }
                     }
+                    
                     else if (message.GetValue("TPPlugin.Calculator.Actions.MemoryAction.Data.List") == "Minus")
                     {
                         if (lastResult != "Syntax Error")
@@ -442,8 +437,16 @@ namespace Calculator_Plugin
                             _client.StateUpdate("TPPlugin.Calculator.States.MemoryValue." + currentlySelectedMemory.ToString(), this.memoryArr[currentlySelectedMemory - 1]);
                         }
                     }
-                        else if (message.GetValue("TPPlugin.Calculator.Actions.MemoryAction.Data.List") == "Recall")
+                    
+                    else if (message.GetValue("TPPlugin.Calculator.Actions.MemoryAction.Data.List") == "Recall")
                     {
+                        if (calculated)
+                        {
+                            this.currentEquation = "";
+                            this.calculated = false;
+                            this.hasPercentage = 0;
+                            this.hasPower = 0;
+                        }
                         this.currentEquation += memoryArr[currentlySelectedMemory - 1];
                         _client.StateUpdate("TPPlugin.Calculator.States.CurrentEquation", this.currentEquation);
                     }
@@ -451,7 +454,8 @@ namespace Calculator_Plugin
 
 
                 case "TPPlugin.Calculator.Actions.MemorySelect":
-                    currentlySelectedMemory = Convert.ToInt32(message.GetValue("TPPlugin.Calculator.Actions.MemorySelect.Number.Data.List"));
+                    if (memoryAmount >= Convert.ToInt32(message.GetValue("TPPlugin.Calculator.Actions.MemorySelect.Number.Data.List")))
+                        currentlySelectedMemory = Convert.ToInt32(message.GetValue("TPPlugin.Calculator.Actions.MemorySelect.Number.Data.List"));
                     _client.StateUpdate("TPPlugin.Calculator.States.Memory.CurrentlySelectedMemory", this.currentlySelectedMemory.ToString());
                     break;
 
@@ -545,6 +549,7 @@ namespace Calculator_Plugin
                         startOfValue = 0;
                         currentPosition = j;
                         bracketAmount = 0;
+                        afterBracketAmount = 0;
                         if (equation[j - 1] == ')')
                         {
                             bracketAmount = -1;
@@ -565,7 +570,7 @@ namespace Calculator_Plugin
                         {
                             for (int x = j; x >= 0; x--)
                             {
-                                if (equation[x] == '+' || equation[x] == '-' || equation[x] == '/' || equation[x] == '*')
+                                if (equation[x] == '+' || equation[x] == '-' || equation[x] == '/' || equation[x] == '*'|| equation[x] == '(')
                                 {
                                     startOfValue = x;
                                     break;
@@ -573,17 +578,37 @@ namespace Calculator_Plugin
                             }
                         }
                         powerEnd = equation.Length;
-                        for (int x = j; x < equation.Length; x++)
+                        if (equation[j + 1] == '(')
                         {
-                            if (equation[x] == '+' || equation[x] == '-' || equation[x] == '/' || equation[x] == '*'|| equation[x] == ')')
+                            afterBracketAmount = -1;
+                            for (int x = j+2; x < equation.Length; x++)
                             {
-                                powerEnd = x;
-                                break;
+                                if (equation[x] == '(')
+                                    afterBracketAmount--;
+                                else if (equation[x] == ')' && afterBracketAmount == -1)
+                                {
+                                    powerEnd = x;
+                                    break;
+                                }
+                                else if (equation[x] == ')')
+                                    afterBracketAmount++;
+                            }
+                        }
+                        else
+                        {
+                            for (int x = j; x < equation.Length; x++)
+                            {
+                                if (equation[x] == '+' || equation[x] == '-' || equation[x] == '/' || equation[x] == '*' || equation[x] == ')')
+                                {
+                                    powerEnd = x;
+                                    break;
+                                }
                             }
                         }
                         break;
                     }
                 }
+                
                 try
                 {
                     if (startOfValue != 0)
@@ -608,8 +633,18 @@ namespace Calculator_Plugin
                         
                     if (powerEnd != equation.Length)
                     {
-                        actualPower = equation.Substring(currentPosition + 1, powerEnd - currentPosition - 1);
-                        afterPercentage = equation.Substring(powerEnd, equation.Length - powerEnd );
+                        if (afterBracketAmount == 0)
+                        {
+                            actualPower = equation.Substring(currentPosition + 1, powerEnd - currentPosition - 1);
+                            afterPercentage = equation.Substring(powerEnd, equation.Length - powerEnd);
+                        }
+                        else
+                        {
+                            actualPower = equation.Substring(currentPosition + 1, powerEnd - currentPosition);
+                            Console.WriteLine(actualPower);
+                            actualPower = ReturnResult(actualPower);
+                            afterPercentage = equation.Substring(powerEnd+1, equation.Length - powerEnd-1);
+                        }
                     }
                     else
                     {
@@ -627,7 +662,7 @@ namespace Calculator_Plugin
                     percentage = Math.Pow(Convert.ToDouble(compiler.Compute(actualNumber, null)), Convert.ToDouble(actualPower)).ToString();
                 }
                 catch
-                {
+                {   
                     return "Syntax Error";
                 }
                 equation = beforePercentage + percentage + afterPercentage;
