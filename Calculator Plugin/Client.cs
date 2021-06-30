@@ -1,10 +1,14 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Data;
+using Microsoft.Extensions.Logging;
+using TouchPortalSDK;
 using TouchPortalSDK.Interfaces;
 using TouchPortalSDK.Messages.Events;
-using TouchPortalSDK;
-using System.Data;
+using TouchPortalSDK.Messages.Models;
+using TouchPortalSDK.Messages.Models.Enums;
 
 namespace Calculator_Plugin
 {
@@ -14,12 +18,15 @@ namespace Calculator_Plugin
 
         private readonly ITouchPortalClient _client;
 
+        private IReadOnlyCollection<Setting> _settings;
+
+
         private DataTable compiler = new DataTable();
         private string currentEquation = "", lastResult = "", beforePercentage = "", afterPercentage = "", percentage = "", actualPower = "", actualNumber = "";
-        private int currentPosition = 0, startOfValue = 0, hasPercentage = 0, hasPower = 0, powerEnd = 0, bracketAmount = 0, currentlySelectedMemory = 1;
+        private int currentPosition = 0, startOfValue = 0, hasPercentage = 0, hasPower = 0, powerEnd = 0, bracketAmount = 0, currentlySelectedMemory = 1, historyAmount = 0, memoryAmount = 0;
         private bool calculated = false;
-        string[,] historyMatrix = { { "", "", "", "", "" }, { "", "", "", "", "" } };
-        string[] memoryArr = { "", "", "", "", "" };
+        private string[,] historyMatrix;
+        private string[] memoryArr, historyChoice, memoryChoice;
         
         public Client()
         {
@@ -46,6 +53,39 @@ namespace Calculator_Plugin
         public void OnInfoEvent(InfoEvent message)
         {
             Console.WriteLine($"[Info] VersionCode: '{message.TpVersionCode}', VersionString: '{message.TpVersionString}', SDK: '{message.SdkVersion}', PluginVersion: '{message.PluginVersion}', Status: '{message.Status}'");
+            _settings = message.Settings;
+            
+            foreach (var setting in _settings)
+            {
+                if (setting.Name == "History Amount")
+                    historyAmount = Convert.ToInt32(setting.Value);
+                else if (setting.Name == "Memory Amount")
+                    memoryAmount = Convert.ToInt32(setting.Value);
+            }
+
+            historyMatrix = new string[2, historyAmount];
+            memoryArr = new string[memoryAmount];
+
+            historyChoice = new string[historyAmount];
+            memoryChoice = new string[memoryAmount];
+
+            for (int i = 1; i <= historyAmount; i++)
+            {
+                _client.CreateState("TPPlugin.Calculator.States.History.Equation." + i, "Calculator: History Equation - Number " + i, "");
+                _client.CreateState("TPPlugin.Calculator.States.History.Result." + i, "Calculator: History Result - Number " + i, "");
+                historyChoice[i - 1] = i.ToString();
+            }
+
+            for (int i = 1; i <= memoryAmount; i++)
+            {
+                _client.CreateState("TPPlugin.Calculator.States.MemoryValue." + i, "Calculator: Memory Value - Number " + i, "");
+                memoryChoice[i - 1] = i.ToString();
+            }
+
+            _client.ChoiceUpdate("TPPlugin.Calculator.Actions.MemorySelect.Number.Data.List", memoryChoice);
+            _client.ChoiceUpdate("TPPlugin.Calculator.Actions.AddFromHistory.Number.Data.List", historyChoice);
+
+
         }
 
         /// <summary>
@@ -64,8 +104,45 @@ namespace Calculator_Plugin
 
         public void OnSettingsEvent(SettingsEvent message)
         {
-            //_settings = message.Values;
-            Console.WriteLine($"[OnSettings] Settings: {message}");
+            _settings = message.Values;
+            for (int i = 1; i <= historyAmount; i++)
+            {
+                _client.RemoveState("TPPlugin.Calculator.States.History.Result." + i);
+                _client.RemoveState("TPPlugin.Calculator.States.History.Equation." + i);
+            }
+            for (int i = 1; i <= memoryAmount; i++)
+            {
+                _client.RemoveState("TPPlugin.Calculator.States.MemoryValue." + i);
+            }
+            foreach (var setting in _settings)
+            {
+                if (setting.Name == "History Amount")
+                    historyAmount = Convert.ToInt32(setting.Value);
+                else if (setting.Name == "Memory Amount")
+                    memoryAmount = Convert.ToInt32(setting.Value);
+            }
+            historyMatrix = new string[2, historyAmount];
+            memoryArr = new string[memoryAmount];
+            
+            historyChoice = new string[historyAmount];
+            memoryChoice = new string[memoryAmount];
+            
+            for (int i = 1; i <= historyAmount; i++)
+            {
+                _client.CreateState("TPPlugin.Calculator.States.History.Equation."+i, "Calculator: History Equation - Number "+i, "");
+                _client.CreateState("TPPlugin.Calculator.States.History.Result." + i, "Calculator: History Result - Number " + i, "");
+                historyChoice[i - 1] = i.ToString();
+            }
+            
+            for (int i = 1; i <= memoryAmount; i++)
+            {
+                _client.CreateState("TPPlugin.Calculator.States.MemoryValue." + i, "Calculator: Memory Value - Number " + i, "");
+                memoryChoice[i - 1] = i.ToString();
+            }
+
+            _client.ChoiceUpdate("TPPlugin.Calculator.Actions.MemorySelect.Number.Data.List", memoryChoice);
+            _client.ChoiceUpdate("TPPlugin.Calculator.Actions.AddFromHistory.Number.Data.List", historyChoice);
+
         }
 
         /// <summary>
@@ -178,8 +255,11 @@ namespace Calculator_Plugin
                             historyMatrix[1, 0] = currentEquation;
                             for (int i = 0; i < historyMatrix.GetLength(1); i++)
                             {
-                                _client.StateUpdate("TPPlugin.Calculator.States.History.Result." + (i + 1).ToString(), historyMatrix[0, i]);
-                                _client.StateUpdate("TPPlugin.Calculator.States.History.Equation." + (i + 1).ToString(), historyMatrix[1, i]);
+                                if (historyMatrix[0, i] != null)
+                                {
+                                    _client.StateUpdate("TPPlugin.Calculator.States.History.Result." + (i + 1).ToString(), historyMatrix[0, i]);
+                                    _client.StateUpdate("TPPlugin.Calculator.States.History.Equation." + (i + 1).ToString(), historyMatrix[1, i]);
+                                }
                             }
                         }
                         break;
@@ -201,8 +281,11 @@ namespace Calculator_Plugin
                             historyMatrix[1, 0] = currentEquation;
                             for (int i = 0; i < historyMatrix.GetLength(1); i++)
                             {
-                                _client.StateUpdate("TPPlugin.Calculator.States.History.Result." + (i + 1).ToString(), historyMatrix[0, i]);
-                                _client.StateUpdate("TPPlugin.Calculator.States.History.Equation." + (i + 1).ToString(), historyMatrix[1, i]);
+                                if (historyMatrix[0, i] != null)
+                                {
+                                    _client.StateUpdate("TPPlugin.Calculator.States.History.Result." + (i + 1).ToString(), historyMatrix[0, i]);
+                                    _client.StateUpdate("TPPlugin.Calculator.States.History.Equation." + (i + 1).ToString(), historyMatrix[1, i]);
+                                }
                             }
                         }
                         break;
@@ -224,8 +307,11 @@ namespace Calculator_Plugin
                             historyMatrix[1, 0] = currentEquation;
                             for (int i = 0; i < historyMatrix.GetLength(1); i++)
                             {
-                                _client.StateUpdate("TPPlugin.Calculator.States.History.Result." + (i + 1).ToString(), historyMatrix[0, i]);
-                                _client.StateUpdate("TPPlugin.Calculator.States.History.Equation." + (i + 1).ToString(), historyMatrix[1, i]);
+                                if (historyMatrix[0, i] != null)
+                                {
+                                    _client.StateUpdate("TPPlugin.Calculator.States.History.Result." + (i + 1).ToString(), historyMatrix[0, i]);
+                                    _client.StateUpdate("TPPlugin.Calculator.States.History.Equation." + (i + 1).ToString(), historyMatrix[1, i]);
+                                }
                             }
                         }
                         break;
@@ -247,8 +333,11 @@ namespace Calculator_Plugin
                         historyMatrix[1, 0] = currentEquation;
                         for (int i = 0; i < historyMatrix.GetLength(1); i++)
                         {
-                            _client.StateUpdate("TPPlugin.Calculator.States.History.Result." + (i + 1).ToString(), historyMatrix[0, i]);
-                            _client.StateUpdate("TPPlugin.Calculator.States.History.Equation." + (i + 1).ToString(), historyMatrix[1, i]);
+                            if (historyMatrix[0, i] != null)
+                            {
+                                _client.StateUpdate("TPPlugin.Calculator.States.History.Result." + (i + 1).ToString(), historyMatrix[0, i]);
+                                _client.StateUpdate("TPPlugin.Calculator.States.History.Equation." + (i + 1).ToString(), historyMatrix[1, i]);
+                            }
                         } 
                     }
                     break;
@@ -330,7 +419,7 @@ namespace Calculator_Plugin
                     
                     else if (message.GetValue("TPPlugin.Calculator.Actions.MemoryAction.Data.List") == "Clear All")
                     {
-                        for (int i = 0; i < 5; i++)
+                        for (int i = 0; i < this.memoryArr.Length; i++)
                         {
                             this.memoryArr[i] = "";
                             _client.StateUpdate("TPPlugin.Calculator.States.MemoryValue." + (i+1).ToString(), this.memoryArr[i]);

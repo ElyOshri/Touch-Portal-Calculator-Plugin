@@ -7,7 +7,6 @@ namespace Calculator_Plugin
     {
         static void Main(string[] args)
         {
-            Console.WriteLine();
             var plugin = new Client();
             plugin.Run();
         }
