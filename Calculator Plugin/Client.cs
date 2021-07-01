@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Data;
+using System.IO;
+using System.Net;
 using TouchPortalSDK;
 using TouchPortalSDK.Interfaces;
 using TouchPortalSDK.Messages.Events;
@@ -21,7 +23,7 @@ namespace Calculator_Plugin
 
         private DataTable compiler = new DataTable();
         private string currentEquation = "", lastResult = "", beforePercentage = "", afterPercentage = "", percentage = "", actualPower = "", actualNumber = "";
-        private int currentPosition = 0, startOfValue = 0, hasPercentage = 0, hasPower = 0, powerEnd = 0, bracketAmount = 0, afterBracketAmount = 0, currentlySelectedMemory = 1, historyAmount = 0, memoryAmount = 0;
+        private int currentPosition = 0, startOfValue = 0, hasPercentage = 0, hasPower = 0, powerEnd = 0, bracketAmount = 0, afterBracketAmount = 0, currentlySelectedMemory = 1, historyAmount = 0, memoryAmount = 0, roundAmount = 0;
         private bool calculated = false;
         private string[,] historyMatrix;
         private string[] memoryArr, historyChoice, memoryChoice;
@@ -55,6 +57,10 @@ namespace Calculator_Plugin
                     historyAmount = Convert.ToInt32(setting.Value);
                 else if (setting.Name == "Memory Amount")
                     memoryAmount = Convert.ToInt32(setting.Value);
+                else if (setting.Name == "Round After Decimal Value")
+                    roundAmount = Convert.ToInt32(setting.Value);
+                else if (setting.Name == "Auto Update" && setting.Value == "On")
+                    UpdateChecker();
             }
 
             historyMatrix = new string[2, historyAmount];
@@ -78,7 +84,6 @@ namespace Calculator_Plugin
 
             _client.ChoiceUpdate("TPPlugin.Calculator.Actions.MemorySelect.Number.Data.List", memoryChoice);
             _client.ChoiceUpdate("TPPlugin.Calculator.Actions.AddFromHistory.Number.Data.List", historyChoice);
-
 
         }
 
@@ -110,6 +115,8 @@ namespace Calculator_Plugin
                     historyAmount = Convert.ToInt32(setting.Value);
                 else if (setting.Name == "Memory Amount")
                     memoryAmount = Convert.ToInt32(setting.Value);
+                else if (setting.Name == "Round After Decimal Value")
+                    roundAmount = Convert.ToInt32(setting.Value);
             }
             historyMatrix = new string[2, historyAmount];
             memoryArr = new string[memoryAmount];
@@ -471,12 +478,13 @@ namespace Calculator_Plugin
             var jsonDocument = JsonSerializer.Deserialize<JsonDocument>(jsonMessage);
            Console.WriteLine($"Unhandled message: {jsonDocument}");
         }
+        
         private string ReturnResult(string equation)
         {
             try
             {
                 Console.WriteLine(compiler.Compute(equation, null).ToString());
-                return Math.Round(Convert.ToDouble(compiler.Compute(equation, null)),3).ToString();
+                return Math.Round(Convert.ToDouble(compiler.Compute(equation, null)),roundAmount).ToString();
             }
             catch
             {
@@ -485,6 +493,7 @@ namespace Calculator_Plugin
             }
             
         }
+        
         private string PercentageFix(string equation)
         {
             for (int i = 0; i < this.hasPercentage; i++)
@@ -578,6 +587,7 @@ namespace Calculator_Plugin
             }
             return equation;
         }
+        
         private string PowerFix(string equation)
         {
             for (int i = 0; i < hasPower; i++)
@@ -708,6 +718,38 @@ namespace Calculator_Plugin
                 equation = beforePercentage + percentage + afterPercentage;
             }
             return equation;
+        }
+        
+        private void UpdateChecker()
+        {
+            var request = WebRequest.Create("https://api.github.com/repos/ElyOshri/Touch-Portal-Calculator-Plugin/tags"); // change url
+            request.Method = "GET";
+            request.Headers.Clear();
+            request.Headers["User-Agent"] = "Calculator Plugin";
+
+            try
+            {
+                JsonElement root = JsonDocument.Parse(new StreamReader(request.GetResponse().GetResponseStream()).ReadToEnd()).RootElement;
+
+                if (root[0].GetProperty("name").ToString() != "v1.0") // update version
+                {
+                    var psi = new System.Diagnostics.ProcessStartInfo();
+                    psi.UseShellExecute = true;
+                    psi.FileName = "https://github.com/ElyOshri/Touch-Portal-Calculator-Plugin/releases"; // change url
+                    System.Diagnostics.Process.Start(psi);
+                    Console.WriteLine("An Update Is Avilable : {0}", root[0].GetProperty("name"));
+                    Console.WriteLine("Current Version : {0}", "v1.0"); // update version
+                }
+                else
+                {
+                    Console.WriteLine("Up To Date : {0}", root[0].GetProperty("name"));
+                }
+            }
+            catch
+            {
+                Console.WriteLine("Passed Update Checker Rate Limit");
+            }
+
         }
     }
 }
