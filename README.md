@@ -19,7 +19,7 @@ Go to the releases:
 https://github.com/ElyOshri/Touch-Portal-Calculator-Plugin/releases
 
 Get the latest version and there will be a `tpp` file you can download. In Touch Portal click on the wrench and select `Import Plug-in`. 
-Once you have done that your plugin should start working, for an explantion on how to use the plugin please look at the example page.
+Once you have done that your plugin should start working, for an explantion on how to use the plugin please look at the [example page](https://github.com/ElyOshri/Touch-Portal-Calculator-Plugin/blob/master/Example_Page.tpz).
 
 
 ## Settings
