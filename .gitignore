@@ -5,3 +5,8 @@
 /Calculator Plugin/obj
 /Calculator Plugin/.vs/Calculator Plugin/v16/.suo
 /Calculator Plugin/bin/Debug/netcoreapp3.1
+/Calculator Plugin/bin/Release/netcoreapp3.1/win-x86
+/Calculator Plugin/bin/Release/netcoreapp3.1
+/Calculator Plugin/Properties/PublishProfiles/FolderProfile.pubxml.user
+/Calculator Plugin/Properties/PublishProfiles
+/Calculator Plugin/Calculator Plugin.csproj.user

@@ -476,7 +476,7 @@ namespace Calculator_Plugin
             try
             {
                 Console.WriteLine(compiler.Compute(equation, null).ToString());
-                return compiler.Compute(equation, null).ToString();
+                return Math.Round(Convert.ToDouble(compiler.Compute(equation, null)),3).ToString();
             }
             catch
             {
